@@ -44,6 +44,7 @@ HTTP 200
     "updated_at": date,
     "email": string,
     "token": string
+    "refresh_token": string
 }
 ```
 
