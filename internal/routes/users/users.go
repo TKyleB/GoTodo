@@ -122,3 +122,30 @@ func (u *UsersHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		Refresh:   refreshToken.Token})
 
 }
+func (u *UsersHandler) RefreshUserToken(w http.ResponseWriter, r *http.Request) {
+	type RefreshTokenResponse struct {
+		Token string `json:"token"`
+	}
+
+	// Get refresh token from auth headers
+	refreshTokenString, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		http.Error(w, "Invalid headaers", http.StatusBadRequest)
+		return
+	}
+	// Check database against unexpired and revoked tokens
+	refreshToken, err := u.DbQueries.GetRefreshToken(r.Context(), refreshTokenString)
+	if err != nil {
+		http.Error(w, "Invalid Token", http.StatusUnauthorized)
+		return
+	}
+
+	// Generate new JWT token
+	newToken, err := auth.MakeJWT(refreshToken.UserID, u.TokenSecret, TOKEN_EXPIRATION_TIME)
+	if err != nil {
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+	refreshTokenResponse := RefreshTokenResponse{Token: newToken}
+	utilites.ResponseWithJson(w, r, http.StatusOK, &refreshTokenResponse)
+}

@@ -48,3 +48,17 @@ HTTP 200
 }
 ```
 
+POST /api/users/refresh
+
+**Request**
+```
+Authorization: Bearer TOKEN_STRING
+```
+**Response**
+```
+HTTP 200
+{
+    "token": string
+}
+```
+

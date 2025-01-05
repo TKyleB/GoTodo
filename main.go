@@ -42,6 +42,7 @@ func main() {
 	// Routes
 	mux.HandleFunc("POST /api/users/register", apiConfig.usersHandler.RegisterUser)
 	mux.HandleFunc("POST /api/users/login", apiConfig.usersHandler.LoginUser)
+	mux.HandleFunc("POST /api/users/refresh", apiConfig.usersHandler.RefreshUserToken)
 
 	fmt.Printf("Starting server on %s\n", server.Addr)
 	server.ListenAndServe()
