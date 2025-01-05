@@ -1,6 +1,7 @@
 package users
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"net/mail"
@@ -23,7 +24,8 @@ type User struct {
 	Email     string    `json:"email"`
 }
 
-const TOKENEXPIRATIONTIME = time.Minute * 10
+const TOKEN_EXPIRATION_TIME = time.Minute * 10            // 10 Minutes
+const REFRESH_TOKEN_EXPIRATION_TIME = time.Hour * 24 * 30 // 30 Days
 
 func (u *UsersHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	type CreateUserRequest struct {
@@ -70,6 +72,7 @@ func (u *UsersHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt time.Time `json:"updated_at"`
 		Email     string    `json:"email"`
 		Token     string    `json:"token"`
+		Refresh   string    `json:"refresh_token"`
 	}
 	params := LoginUserRequest{}
 	err := utilites.DecodeJsonBody(w, r, &params)
@@ -89,12 +92,33 @@ func (u *UsersHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid username/password", http.StatusUnauthorized)
 		return
 	}
-	// Create token
-	token, err := auth.MakeJWT(user.ID, u.TokenSecret, TOKENEXPIRATIONTIME)
+	// Create JWT token
+	token, err := auth.MakeJWT(user.ID, u.TokenSecret, TOKEN_EXPIRATION_TIME)
 	if err != nil {
-		http.Error(w, "Internal Error", http.StatusInternalServerError)
+		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
-	utilites.ResponseWithJson(w, r, http.StatusOK, LoginUserResponse{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email, Token: token})
+	// Create Refresh Token
+	refreshTokenString, err := auth.MakeRefreshToken()
+	if err != nil {
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+	refreshToken, err := u.DbQueries.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token:     refreshTokenString,
+		UserID:    user.ID,
+		ExpiresAt: time.Now().Add(REFRESH_TOKEN_EXPIRATION_TIME),
+		RevokedAt: sql.NullTime{}})
+	if err != nil {
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+	utilites.ResponseWithJson(w, r, http.StatusOK, LoginUserResponse{
+		ID:        user.ID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email:     user.Email,
+		Token:     token,
+		Refresh:   refreshToken.Token})
 
 }
