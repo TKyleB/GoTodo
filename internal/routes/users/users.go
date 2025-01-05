@@ -149,3 +149,21 @@ func (u *UsersHandler) RefreshUserToken(w http.ResponseWriter, r *http.Request) 
 	refreshTokenResponse := RefreshTokenResponse{Token: newToken}
 	utilites.ResponseWithJson(w, r, http.StatusOK, &refreshTokenResponse)
 }
+func (u *UsersHandler) GetUser(w http.ResponseWriter, r *http.Request) {
+	tokenString, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		http.Error(w, "Invalid headers", http.StatusBadRequest)
+		return
+	}
+	userID, err := auth.ValidateJWT(tokenString, u.TokenSecret)
+	if err != nil {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+	user, err := u.DbQueries.GetUserByID(r.Context(), userID)
+	if err != nil {
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+	utilites.ResponseWithJson(w, r, http.StatusOK, User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email})
+}

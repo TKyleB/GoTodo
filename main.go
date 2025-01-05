@@ -43,6 +43,7 @@ func main() {
 	mux.HandleFunc("POST /api/users/register", apiConfig.usersHandler.RegisterUser)
 	mux.HandleFunc("POST /api/users/login", apiConfig.usersHandler.LoginUser)
 	mux.HandleFunc("POST /api/users/refresh", apiConfig.usersHandler.RefreshUserToken)
+	mux.HandleFunc("GET /api/users/", apiConfig.usersHandler.GetUser)
 
 	fmt.Printf("Starting server on %s\n", server.Addr)
 	server.ListenAndServe()
