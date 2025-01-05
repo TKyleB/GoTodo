@@ -7,6 +7,7 @@ The REST API to the app is described below.
 ### Auth
 
 POST /api/users/register
+
 **Request**
 ```
 {
@@ -26,6 +27,7 @@ HTTP 201
 ```
 
 POST /api/users/login
+
 **Request**
 ```
 {
