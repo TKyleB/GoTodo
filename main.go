@@ -24,6 +24,7 @@ func main() {
 	mux := http.NewServeMux()
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
+	tokenSecret := os.Getenv("TOKEN_SECRET")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -31,7 +32,7 @@ func main() {
 	}
 	dbQueries := database.New(db)
 	apiConfig := ApiConfig{
-		usersHandler: users.UsersHandler{DbQueries: dbQueries},
+		usersHandler: users.UsersHandler{DbQueries: dbQueries, TokenSecret: tokenSecret},
 	}
 	server := http.Server{
 		Handler: mux,
@@ -39,7 +40,8 @@ func main() {
 	}
 
 	// Routes
-	mux.HandleFunc("POST /api/users", apiConfig.usersHandler.RegisterUser)
+	mux.HandleFunc("POST /api/users/register", apiConfig.usersHandler.RegisterUser)
+	mux.HandleFunc("POST /api/users/login", apiConfig.usersHandler.LoginUser)
 
 	fmt.Printf("Starting server on %s\n", server.Addr)
 	server.ListenAndServe()
