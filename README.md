@@ -1,5 +1,5 @@
-# GoTodo REST API
-An API for tracking todos using implemented using golang
+# Snippetz REST API
+An API for creating code snippets for your favorite programming languages
 
 ## API
 The REST API to the app is described below.
