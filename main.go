@@ -7,16 +7,16 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/joho/godotenv"
-
 	"github.com/TKyleB/GoTodo/internal/database"
 	"github.com/TKyleB/GoTodo/internal/routes/users"
+	"github.com/joho/godotenv"
+
 	_ "github.com/lib/pq" // Used to connect to DB
 )
 
 const PORT = "8080"
 
-type ApiConfig struct {
+type AppConfig struct {
 	usersHandler users.UsersHandler
 }
 
@@ -31,7 +31,7 @@ func main() {
 		log.Fatalf("Error connecting to database. %v", err)
 	}
 	dbQueries := database.New(db)
-	apiConfig := ApiConfig{
+	appConfig := AppConfig{
 		usersHandler: users.UsersHandler{DbQueries: dbQueries, TokenSecret: tokenSecret},
 	}
 	server := http.Server{
@@ -40,10 +40,10 @@ func main() {
 	}
 
 	// Routes
-	mux.HandleFunc("POST /api/users/register", apiConfig.usersHandler.RegisterUser)
-	mux.HandleFunc("POST /api/users/login", apiConfig.usersHandler.LoginUser)
-	mux.HandleFunc("POST /api/users/refresh", apiConfig.usersHandler.RefreshUserToken)
-	mux.HandleFunc("GET /api/users/", apiConfig.usersHandler.GetUser)
+	mux.HandleFunc("POST /api/users/register", appConfig.usersHandler.RegisterUser)
+	mux.HandleFunc("POST /api/users/login", appConfig.usersHandler.LoginUser)
+	mux.HandleFunc("POST /api/users/refresh", appConfig.usersHandler.RefreshUserToken)
+	mux.HandleFunc("GET /api/users/", appConfig.usersHandler.GetUser)
 
 	fmt.Printf("Starting server on %s\n", server.Addr)
 	server.ListenAndServe()
