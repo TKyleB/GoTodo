@@ -7,6 +7,7 @@ import (
 
 func DecodeJsonBody(w http.ResponseWriter, r *http.Request, dst interface{}) error {
 	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
 	decoder.DisallowUnknownFields()
 	err := decoder.Decode(&dst)
 	if err != nil {
