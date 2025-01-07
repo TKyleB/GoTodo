@@ -23,8 +23,17 @@ func ResponseWithJson(w http.ResponseWriter, r *http.Request, code int, payload 
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return err
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(code)
 	w.Write(data)
 	return nil
+}
+
+func ResponseWithError(w http.ResponseWriter, r *http.Request, code int, message string) {
+	type Error struct {
+		Error string `json:"error"`
+	}
+	errResponse := Error{Error: message}
+	ResponseWithJson(w, r, code, errResponse)
+
 }

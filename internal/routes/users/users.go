@@ -2,7 +2,6 @@ package users
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 	"net/mail"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/TKyleB/GoTodo/internal/database"
 	"github.com/TKyleB/GoTodo/internal/utilites"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type UsersHandler struct {
@@ -39,11 +39,11 @@ func (u *UsersHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	}
 	_, err = mail.ParseAddress(req.Email)
 	if err != nil {
-		http.Error(w, "Invalid email format", http.StatusBadRequest)
+		utilites.ResponseWithError(w, r, http.StatusBadRequest, "invalid email format")
 		return
 	}
 	if len(req.Password) < 6 {
-		http.Error(w, "Password must be 6 or greater characters long", http.StatusBadRequest)
+		utilites.ResponseWithError(w, r, http.StatusBadRequest, "password must be 6 or greater characters")
 		return
 	}
 	hashedPassword, err := auth.HashPassword(req.Password)
@@ -54,9 +54,12 @@ func (u *UsersHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	user, err := u.DbQueries.CreateUser(r.Context(), database.CreateUserParams{Email: req.Email, HashedPassword: hashedPassword})
 	userResponse := User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email}
 	if err != nil {
-		http.Error(w, "Error creating user", http.StatusInternalServerError)
-		fmt.Printf("%v", err)
-		return
+		// If error is non-unique email
+		if err.(*pq.Error).Code == pq.ErrorCode("23505") {
+			utilites.ResponseWithError(w, r, http.StatusConflict, "email is already registered")
+			return
+		}
+		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "unknown server error")
 	}
 	utilites.ResponseWithJson(w, r, http.StatusCreated, &userResponse)
 
