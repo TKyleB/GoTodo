@@ -59,7 +59,7 @@ func (u *UsersHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 			utilites.ResponseWithError(w, r, http.StatusConflict, "email is already registered")
 			return
 		}
-		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "unknown server error")
+		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
 	}
 	utilites.ResponseWithJson(w, r, http.StatusCreated, &userResponse)
 
@@ -86,25 +86,25 @@ func (u *UsersHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	// Get user if email exists
 	user, err := u.DbQueries.GetUserByEmail(r.Context(), params.Email)
 	if err != nil {
-		http.Error(w, "Invalid username/password", http.StatusUnauthorized)
+		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "invalid email/password combination")
 		return
 	}
 	// Check if password matches stored
 	err = auth.CheckPasswordHash(params.Password, user.HashedPassword)
 	if err != nil {
-		http.Error(w, "Invalid username/password", http.StatusUnauthorized)
+		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "invalid email/password combination")
 		return
 	}
 	// Create JWT token
 	token, err := auth.MakeJWT(user.ID, u.TokenSecret, TOKEN_EXPIRATION_TIME)
 	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
+		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
 		return
 	}
 	// Create Refresh Token
 	refreshTokenString, err := auth.MakeRefreshToken()
 	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
+		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
 		return
 	}
 	refreshToken, err := u.DbQueries.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
@@ -113,7 +113,7 @@ func (u *UsersHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt: time.Now().Add(REFRESH_TOKEN_EXPIRATION_TIME),
 		RevokedAt: sql.NullTime{}})
 	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
+		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
 		return
 	}
 	utilites.ResponseWithJson(w, r, http.StatusOK, LoginUserResponse{
@@ -133,20 +133,20 @@ func (u *UsersHandler) RefreshUserToken(w http.ResponseWriter, r *http.Request) 
 	// Get refresh token from auth headers
 	refreshTokenString, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		http.Error(w, "Invalid headaers", http.StatusBadRequest)
+		utilites.ResponseWithError(w, r, http.StatusBadRequest, "invalid auth headers")
 		return
 	}
 	// Check database against unexpired and revoked tokens
 	refreshToken, err := u.DbQueries.GetRefreshToken(r.Context(), refreshTokenString)
 	if err != nil {
-		http.Error(w, "Invalid Token", http.StatusUnauthorized)
+		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "expired or invalid token")
 		return
 	}
 
 	// Generate new JWT token
 	newToken, err := auth.MakeJWT(refreshToken.UserID, u.TokenSecret, TOKEN_EXPIRATION_TIME)
 	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
+		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
 		return
 	}
 	refreshTokenResponse := RefreshTokenResponse{Token: newToken}
@@ -155,17 +155,17 @@ func (u *UsersHandler) RefreshUserToken(w http.ResponseWriter, r *http.Request) 
 func (u *UsersHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	tokenString, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		http.Error(w, "Invalid headers", http.StatusBadRequest)
+		utilites.ResponseWithError(w, r, http.StatusBadRequest, "invalid auth headers")
 		return
 	}
 	userID, err := auth.ValidateJWT(tokenString, u.TokenSecret)
 	if err != nil {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "invalid or expired token")
 		return
 	}
 	user, err := u.DbQueries.GetUserByID(r.Context(), userID)
 	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
+		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
 		return
 	}
 	utilites.ResponseWithJson(w, r, http.StatusOK, User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email})
