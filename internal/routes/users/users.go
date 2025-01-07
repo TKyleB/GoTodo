@@ -2,6 +2,7 @@ package users
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
 	"net/mail"
 	"time"
@@ -48,14 +49,15 @@ func (u *UsersHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	}
 	hashedPassword, err := auth.HashPassword(req.Password)
 	if err != nil {
-		http.Error(w, "Error with password", http.StatusBadRequest)
+		utilites.ResponseWithError(w, r, http.StatusBadRequest, "invalid characters in password")
 		return
 	}
 	user, err := u.DbQueries.CreateUser(r.Context(), database.CreateUserParams{Email: req.Email, HashedPassword: hashedPassword})
 	userResponse := User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email}
 	if err != nil {
 		// If error is non-unique email
-		if err.(*pq.Error).Code == pq.ErrorCode("23505") {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
 			utilites.ResponseWithError(w, r, http.StatusConflict, "email is already registered")
 			return
 		}
