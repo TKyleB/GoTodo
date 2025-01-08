@@ -25,6 +25,15 @@ type RefreshToken struct {
 	RevokedAt sql.NullTime
 }
 
+type Snippet struct {
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	LanguageID  uuid.UUID
+	AuthorID    uuid.UUID
+	SnippetText string
+}
+
 type User struct {
 	ID             uuid.UUID
 	CreatedAt      time.Time

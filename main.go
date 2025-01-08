@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/TKyleB/GoTodo/internal/database"
+	"github.com/TKyleB/GoTodo/internal/routes/snippets"
 	"github.com/TKyleB/GoTodo/internal/routes/users"
 	"github.com/joho/godotenv"
 
@@ -17,7 +18,8 @@ import (
 const PORT = "8080"
 
 type AppConfig struct {
-	usersHandler users.UsersHandler
+	usersHandler    users.UsersHandler
+	snippetsHandler snippets.SnippetsHandler
 }
 
 func main() {
@@ -32,7 +34,8 @@ func main() {
 	}
 	dbQueries := database.New(db)
 	appConfig := AppConfig{
-		usersHandler: users.UsersHandler{DbQueries: dbQueries, TokenSecret: tokenSecret},
+		usersHandler:    users.UsersHandler{DbQueries: dbQueries, TokenSecret: tokenSecret},
+		snippetsHandler: snippets.SnippetsHandler{DbQueries: dbQueries, TokenSecret: tokenSecret},
 	}
 	server := http.Server{
 		Handler: mux,
@@ -44,6 +47,8 @@ func main() {
 	mux.HandleFunc("POST /api/users/login", appConfig.usersHandler.LoginUser)
 	mux.HandleFunc("POST /api/users/refresh", appConfig.usersHandler.RefreshUserToken)
 	mux.HandleFunc("GET /api/users/", appConfig.usersHandler.GetUser)
+
+	mux.HandleFunc("POST /api/snippets", appConfig.snippetsHandler.CreateSnippet)
 
 	fmt.Printf("Starting server on %s\n", server.Addr)
 	server.ListenAndServe()
