@@ -13,7 +13,7 @@ import (
 
 type SnippetsHandler struct {
 	DbQueries   *database.Queries
-	TokenSecret string
+	AuthService *auth.AuthService
 }
 type Snippet struct {
 	ID          uuid.UUID `json:"id"`
@@ -30,12 +30,12 @@ func (s *SnippetsHandler) CreateSnippet(w http.ResponseWriter, r *http.Request) 
 		Text     string `json:"text"`
 	}
 
-	token, err := auth.GetBearerToken(r.Header)
+	token, err := s.AuthService.GetBearerToken(r.Header)
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "auth token not provided")
 		return
 	}
-	userID, err := auth.ValidateJWT(token, s.TokenSecret)
+	userID, err := s.AuthService.ValidateJWT(token)
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "invalid token")
 		return

@@ -14,7 +14,21 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func HashPassword(password string) (string, error) {
+type AuthService struct {
+	TokenSecret                string
+	TokenExpirationTime        time.Duration
+	RefreshTokenExpirationTime time.Duration
+	Issuer                     string
+}
+
+type User struct {
+	ID        uuid.UUID `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+}
+
+func (a *AuthService) HashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	if err != nil {
 		return "", err
@@ -24,29 +38,29 @@ func HashPassword(password string) (string, error) {
 
 }
 
-func CheckPasswordHash(password, hash string) error {
+func (a *AuthService) CheckPasswordHash(password, hash string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 }
 
-func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
+func (a *AuthService) MakeJWT(userID uuid.UUID) (string, error) {
 	claims := jwt.RegisteredClaims{
-		Issuer:    "gotodo",
+		Issuer:    a.Issuer,
 		Subject:   userID.String(),
 		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(expiresIn)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(a.TokenExpirationTime)),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(tokenSecret))
+	signedToken, err := token.SignedString([]byte(a.TokenSecret))
 	if err != nil {
 		return "", err
 	}
 	return signedToken, nil
 }
 
-func ValidateJWT(tokenString string, tokenSecret string) (uuid.UUID, error) {
+func (a *AuthService) ValidateJWT(tokenString string) (uuid.UUID, error) {
 	parsedToken, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(tokenSecret), nil
+		return []byte(a.TokenSecret), nil
 	})
 	if err != nil || !parsedToken.Valid {
 		return uuid.UUID{}, err
@@ -65,7 +79,7 @@ func ValidateJWT(tokenString string, tokenSecret string) (uuid.UUID, error) {
 
 }
 
-func GetBearerToken(headers http.Header) (string, error) {
+func (a *AuthService) GetBearerToken(headers http.Header) (string, error) {
 	authHeader := headers.Get("Authorization")
 	if authHeader == "" {
 		return "", errors.New("no auth header on request")
@@ -75,7 +89,7 @@ func GetBearerToken(headers http.Header) (string, error) {
 
 }
 
-func MakeRefreshToken() (string, error) {
+func (a *AuthService) MakeRefreshToken() (string, error) {
 	tokenBytes := make([]byte, 32)
 	_, err := rand.Read(tokenBytes)
 	if err != nil {

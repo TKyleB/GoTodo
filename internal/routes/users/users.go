@@ -16,17 +16,8 @@ import (
 
 type UsersHandler struct {
 	DbQueries   *database.Queries
-	TokenSecret string
+	AuthService *auth.AuthService
 }
-type User struct {
-	ID        uuid.UUID `json:"user_id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-}
-
-const TOKEN_EXPIRATION_TIME = time.Minute * 10            // 10 Minutes
-const REFRESH_TOKEN_EXPIRATION_TIME = time.Hour * 24 * 30 // 30 Days
 
 func (u *UsersHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	type CreateUserRequest struct {
@@ -47,13 +38,13 @@ func (u *UsersHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		utilites.ResponseWithError(w, r, http.StatusBadRequest, "password must be 6 or greater characters")
 		return
 	}
-	hashedPassword, err := auth.HashPassword(req.Password)
+	hashedPassword, err := u.AuthService.HashPassword(req.Password)
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusBadRequest, "invalid characters in password")
 		return
 	}
 	user, err := u.DbQueries.CreateUser(r.Context(), database.CreateUserParams{Email: req.Email, HashedPassword: hashedPassword})
-	userResponse := User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email}
+	userResponse := auth.User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email}
 	if err != nil {
 		// If error is non-unique email
 		var pqErr *pq.Error
@@ -92,19 +83,19 @@ func (u *UsersHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check if password matches stored
-	err = auth.CheckPasswordHash(params.Password, user.HashedPassword)
+	err = u.AuthService.CheckPasswordHash(params.Password, user.HashedPassword)
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "invalid email/password combination")
 		return
 	}
 	// Create JWT token
-	token, err := auth.MakeJWT(user.ID, u.TokenSecret, TOKEN_EXPIRATION_TIME)
+	token, err := u.AuthService.MakeJWT(user.ID)
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
 		return
 	}
 	// Create Refresh Token
-	refreshTokenString, err := auth.MakeRefreshToken()
+	refreshTokenString, err := u.AuthService.MakeRefreshToken()
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
 		return
@@ -112,7 +103,7 @@ func (u *UsersHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	refreshToken, err := u.DbQueries.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
 		Token:     refreshTokenString,
 		UserID:    user.ID,
-		ExpiresAt: time.Now().Add(REFRESH_TOKEN_EXPIRATION_TIME),
+		ExpiresAt: time.Now().Add(u.AuthService.RefreshTokenExpirationTime),
 		RevokedAt: sql.NullTime{}})
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
@@ -133,7 +124,7 @@ func (u *UsersHandler) RefreshUserToken(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Get refresh token from auth headers
-	refreshTokenString, err := auth.GetBearerToken(r.Header)
+	refreshTokenString, err := u.AuthService.GetBearerToken(r.Header)
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusBadRequest, "invalid auth headers")
 		return
@@ -146,7 +137,7 @@ func (u *UsersHandler) RefreshUserToken(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Generate new JWT token
-	newToken, err := auth.MakeJWT(refreshToken.UserID, u.TokenSecret, TOKEN_EXPIRATION_TIME)
+	newToken, err := u.AuthService.MakeJWT(refreshToken.UserID)
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
 		return
@@ -155,12 +146,12 @@ func (u *UsersHandler) RefreshUserToken(w http.ResponseWriter, r *http.Request) 
 	utilites.ResponseWithJson(w, r, http.StatusOK, &refreshTokenResponse)
 }
 func (u *UsersHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	tokenString, err := auth.GetBearerToken(r.Header)
+	tokenString, err := u.AuthService.GetBearerToken(r.Header)
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusBadRequest, "invalid auth headers")
 		return
 	}
-	userID, err := auth.ValidateJWT(tokenString, u.TokenSecret)
+	userID, err := u.AuthService.ValidateJWT(tokenString)
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "invalid or expired token")
 		return
@@ -170,5 +161,5 @@ func (u *UsersHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
 		return
 	}
-	utilites.ResponseWithJson(w, r, http.StatusOK, User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email})
+	utilites.ResponseWithJson(w, r, http.StatusOK, auth.User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email})
 }

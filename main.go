@@ -6,7 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/TKyleB/GoTodo/internal/auth"
 	"github.com/TKyleB/GoTodo/internal/database"
 	"github.com/TKyleB/GoTodo/internal/routes/snippets"
 	"github.com/TKyleB/GoTodo/internal/routes/users"
@@ -26,16 +28,23 @@ func main() {
 	mux := http.NewServeMux()
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
-	tokenSecret := os.Getenv("TOKEN_SECRET")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Error connecting to database. %v", err)
 	}
+	// Services
 	dbQueries := database.New(db)
+	authService := auth.AuthService{
+		TokenSecret:                os.Getenv("TOKEN_SECRET"),
+		TokenExpirationTime:        time.Minute * 10,
+		RefreshTokenExpirationTime: time.Hour * 24 * 30,
+		Issuer:                     "snippetz",
+	}
+
 	appConfig := AppConfig{
-		usersHandler:    users.UsersHandler{DbQueries: dbQueries, TokenSecret: tokenSecret},
-		snippetsHandler: snippets.SnippetsHandler{DbQueries: dbQueries, TokenSecret: tokenSecret},
+		usersHandler:    users.UsersHandler{DbQueries: dbQueries, AuthService: &authService},
+		snippetsHandler: snippets.SnippetsHandler{DbQueries: dbQueries, AuthService: &authService},
 	}
 	server := http.Server{
 		Handler: mux,
