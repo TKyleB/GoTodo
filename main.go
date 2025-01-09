@@ -40,6 +40,7 @@ func main() {
 		TokenExpirationTime:        time.Minute * 10,
 		RefreshTokenExpirationTime: time.Hour * 24 * 30,
 		Issuer:                     "snippetz",
+		DbQueries:                  dbQueries,
 	}
 
 	appConfig := AppConfig{

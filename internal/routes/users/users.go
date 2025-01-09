@@ -146,19 +146,9 @@ func (u *UsersHandler) RefreshUserToken(w http.ResponseWriter, r *http.Request) 
 	utilites.ResponseWithJson(w, r, http.StatusOK, &refreshTokenResponse)
 }
 func (u *UsersHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	tokenString, err := u.AuthService.GetBearerToken(r.Header)
+	user, err := u.AuthService.GetAuthenticatedUser(r)
 	if err != nil {
-		utilites.ResponseWithError(w, r, http.StatusBadRequest, "invalid auth headers")
-		return
-	}
-	userID, err := u.AuthService.ValidateJWT(tokenString)
-	if err != nil {
-		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "invalid or expired token")
-		return
-	}
-	user, err := u.DbQueries.GetUserByID(r.Context(), userID)
-	if err != nil {
-		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
+		utilites.ResponseWithError(w, r, http.StatusUnauthorized, err.Error())
 		return
 	}
 	utilites.ResponseWithJson(w, r, http.StatusOK, auth.User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email})

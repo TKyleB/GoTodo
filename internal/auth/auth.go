@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TKyleB/GoTodo/internal/database"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -19,6 +20,7 @@ type AuthService struct {
 	TokenExpirationTime        time.Duration
 	RefreshTokenExpirationTime time.Duration
 	Issuer                     string
+	DbQueries                  *database.Queries
 }
 
 type User struct {
@@ -26,6 +28,25 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+}
+
+func (a *AuthService) GetAuthenticatedUser(r *http.Request) (*User, error) {
+	tokenString, err := a.GetBearerToken(r.Header)
+	if err != nil {
+		return nil, errors.New("missing or invalid authorization token")
+	}
+	userID, err := a.ValidateJWT(tokenString)
+	if err != nil {
+		return nil, errors.New("invalid or expired token")
+	}
+	dbUser, err := a.DbQueries.GetUserByID(r.Context(), userID)
+	if err != nil {
+		return nil, errors.New("user not in database")
+	}
+
+	user := User{ID: dbUser.ID, CreatedAt: dbUser.CreatedAt, UpdatedAt: dbUser.UpdatedAt, Email: dbUser.Email}
+	return &user, nil
+
 }
 
 func (a *AuthService) HashPassword(password string) (string, error) {
