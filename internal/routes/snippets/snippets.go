@@ -30,14 +30,9 @@ func (s *SnippetsHandler) CreateSnippet(w http.ResponseWriter, r *http.Request) 
 		Text     string `json:"text"`
 	}
 
-	token, err := s.AuthService.GetBearerToken(r.Header)
+	user, err := s.AuthService.GetAuthenticatedUser(r)
 	if err != nil {
-		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "auth token not provided")
-		return
-	}
-	userID, err := s.AuthService.ValidateJWT(token)
-	if err != nil {
-		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "invalid token")
+		utilites.ResponseWithError(w, r, http.StatusUnauthorized, err.Error())
 		return
 	}
 
@@ -56,7 +51,7 @@ func (s *SnippetsHandler) CreateSnippet(w http.ResponseWriter, r *http.Request) 
 		utilites.ResponseWithError(w, r, http.StatusBadRequest, errorText)
 		return
 	}
-	snippet, err := s.DbQueries.CreateSnippet(r.Context(), database.CreateSnippetParams{LanguageID: languageID, AuthorID: userID, SnippetText: params.Text})
+	snippet, err := s.DbQueries.CreateSnippet(r.Context(), database.CreateSnippetParams{LanguageID: languageID, AuthorID: user.ID, SnippetText: params.Text})
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
 		return
