@@ -30,7 +30,7 @@ type Snippet struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	LanguageID  uuid.UUID
-	AuthorID    uuid.UUID
+	UserID      uuid.UUID
 	SnippetText string
 }
 

@@ -20,7 +20,7 @@ type Snippet struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	Language    string    `json:"language"`
-	AuthorID    uuid.UUID `json:"author_id"`
+	UserID      uuid.UUID `json:"author_id"`
 	SnippetText string    `json:"text"`
 }
 
@@ -51,11 +51,11 @@ func (s *SnippetsHandler) CreateSnippet(w http.ResponseWriter, r *http.Request) 
 		utilites.ResponseWithError(w, r, http.StatusBadRequest, errorText)
 		return
 	}
-	snippet, err := s.DbQueries.CreateSnippet(r.Context(), database.CreateSnippetParams{LanguageID: languageID, AuthorID: user.ID, SnippetText: params.Text})
+	snippet, err := s.DbQueries.CreateSnippet(r.Context(), database.CreateSnippetParams{LanguageID: languageID, UserID: user.ID, SnippetText: params.Text})
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
 		return
 	}
-	utilites.ResponseWithJson(w, r, http.StatusCreated, Snippet{ID: snippet.ID, CreatedAt: snippet.CreatedAt, UpdatedAt: snippet.UpdatedAt, Language: params.Language, AuthorID: snippet.AuthorID, SnippetText: snippet.SnippetText})
+	utilites.ResponseWithJson(w, r, http.StatusCreated, Snippet{ID: snippet.ID, CreatedAt: snippet.CreatedAt, UpdatedAt: snippet.UpdatedAt, Language: params.Language, UserID: snippet.UserID, SnippetText: snippet.SnippetText})
 
 }

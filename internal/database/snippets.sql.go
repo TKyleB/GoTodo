@@ -12,26 +12,26 @@ import (
 )
 
 const createSnippet = `-- name: CreateSnippet :one
-INSERT INTO snippets(id, created_at, updated_at, language_id, author_id, snippet_text)
+INSERT INTO snippets(id, created_at, updated_at, language_id, user_id, snippet_text)
 VALUES(gen_random_uuid(), NOW(), NOW(), $1, $2, $3)
-RETURNING id, created_at, updated_at, language_id, author_id, snippet_text
+RETURNING id, created_at, updated_at, language_id, user_id, snippet_text
 `
 
 type CreateSnippetParams struct {
 	LanguageID  uuid.UUID
-	AuthorID    uuid.UUID
+	UserID      uuid.UUID
 	SnippetText string
 }
 
 func (q *Queries) CreateSnippet(ctx context.Context, arg CreateSnippetParams) (Snippet, error) {
-	row := q.db.QueryRowContext(ctx, createSnippet, arg.LanguageID, arg.AuthorID, arg.SnippetText)
+	row := q.db.QueryRowContext(ctx, createSnippet, arg.LanguageID, arg.UserID, arg.SnippetText)
 	var i Snippet
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LanguageID,
-		&i.AuthorID,
+		&i.UserID,
 		&i.SnippetText,
 	)
 	return i, err
