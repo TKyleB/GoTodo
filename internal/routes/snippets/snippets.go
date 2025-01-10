@@ -70,6 +70,7 @@ func (s *SnippetsHandler) CreateSnippet(w http.ResponseWriter, r *http.Request) 
 }
 func (s *SnippetsHandler) GetSnippets(w http.ResponseWriter, r *http.Request) {
 	// Set-up for pagination
+	var count int32
 	limit := int32(10)
 	offset := int32(0)
 	var language sql.NullString
@@ -92,10 +93,10 @@ func (s *SnippetsHandler) GetSnippets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dbSnippets, _ := s.DbQueries.GetSnippetsByCreatedAt(r.Context(), database.GetSnippetsByCreatedAtParams{Limit: limit, Offset: offset, Language: language})
-	var count int32
 
 	var snippets []Snippet
 	for i, snippet := range dbSnippets {
+		// If snippets. Update total count
 		if i == 0 {
 			count = int32(snippet.TotalCount)
 		}

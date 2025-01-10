@@ -39,18 +39,6 @@ func (q *Queries) CreateSnippet(ctx context.Context, arg CreateSnippetParams) (S
 	return i, err
 }
 
-const getSnippetCount = `-- name: GetSnippetCount :one
-SELECT COUNT(*)
-FROM snippets
-`
-
-func (q *Queries) GetSnippetCount(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getSnippetCount)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const getSnippetsByCreatedAt = `-- name: GetSnippetsByCreatedAt :many
 SELECT COUNT(*) OVER () AS total_count,
  snippets.id, snippets.created_at, snippets.updated_at, snippets.user_id, snippet_text, languages.name AS language
