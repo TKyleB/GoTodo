@@ -69,12 +69,14 @@ func (s *SnippetsHandler) CreateSnippet(w http.ResponseWriter, r *http.Request) 
 
 }
 func (s *SnippetsHandler) GetSnippets(w http.ResponseWriter, r *http.Request) {
+	// Set-up for pagination
 	limit := int32(10)
 	offset := int32(0)
 	var language sql.NullString
 	languageString := r.URL.Query().Get("language")
 	limitString := r.URL.Query().Get("limit")
 	offsetString := r.URL.Query().Get("offset")
+
 	if limitString != "" {
 		if parseLimit, err := strconv.ParseInt(limitString, 10, 32); err == nil {
 			limit = int32(parseLimit)
@@ -90,13 +92,16 @@ func (s *SnippetsHandler) GetSnippets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dbSnippets, _ := s.DbQueries.GetSnippetsByCreatedAt(r.Context(), database.GetSnippetsByCreatedAtParams{Limit: limit, Offset: offset, Language: language})
-	snippetsCount, _ := s.DbQueries.GetSnippetCount(r.Context())
-	count := int32(snippetsCount)
+	var count int32
 
 	var snippets []Snippet
-	for _, snippet := range dbSnippets {
+	for i, snippet := range dbSnippets {
+		if i == 0 {
+			count = int32(snippet.TotalCount)
+		}
 		snippets = append(snippets, Snippet{ID: snippet.ID, CreatedAt: snippet.CreatedAt, UpdatedAt: snippet.UpdatedAt, Language: snippet.Language, UserID: snippet.UserID, SnippetText: snippet.SnippetText})
 	}
+
 	baseURL := fmt.Sprintf("%s://%s", r.URL.Scheme, r.Host)
 	var next *string
 	var previous *string

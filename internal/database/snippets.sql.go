@@ -40,7 +40,8 @@ func (q *Queries) CreateSnippet(ctx context.Context, arg CreateSnippetParams) (S
 }
 
 const getSnippetCount = `-- name: GetSnippetCount :one
-SELECT COUNT(*) FROM snippets
+SELECT COUNT(*)
+FROM snippets
 `
 
 func (q *Queries) GetSnippetCount(ctx context.Context) (int64, error) {
@@ -51,7 +52,8 @@ func (q *Queries) GetSnippetCount(ctx context.Context) (int64, error) {
 }
 
 const getSnippetsByCreatedAt = `-- name: GetSnippetsByCreatedAt :many
-SELECT snippets.id, snippets.created_at, snippets.updated_at, snippets.user_id, snippet_text, languages.name AS language
+SELECT COUNT(*) OVER () AS total_count,
+ snippets.id, snippets.created_at, snippets.updated_at, snippets.user_id, snippet_text, languages.name AS language
 FROM snippets
 INNER JOIN languages ON snippets.language_id = languages.id
 WHERE (languages.name = $3 OR $3 IS NULL)
@@ -66,6 +68,7 @@ type GetSnippetsByCreatedAtParams struct {
 }
 
 type GetSnippetsByCreatedAtRow struct {
+	TotalCount  int64
 	ID          uuid.UUID
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -84,6 +87,7 @@ func (q *Queries) GetSnippetsByCreatedAt(ctx context.Context, arg GetSnippetsByC
 	for rows.Next() {
 		var i GetSnippetsByCreatedAtRow
 		if err := rows.Scan(
+			&i.TotalCount,
 			&i.ID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
