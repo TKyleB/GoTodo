@@ -1,6 +1,7 @@
 package snippets
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -70,6 +71,8 @@ func (s *SnippetsHandler) CreateSnippet(w http.ResponseWriter, r *http.Request) 
 func (s *SnippetsHandler) GetSnippets(w http.ResponseWriter, r *http.Request) {
 	limit := int32(10)
 	offset := int32(0)
+	var language sql.NullString
+	languageString := r.URL.Query().Get("language")
 	limitString := r.URL.Query().Get("limit")
 	offsetString := r.URL.Query().Get("offset")
 	if limitString != "" {
@@ -82,8 +85,11 @@ func (s *SnippetsHandler) GetSnippets(w http.ResponseWriter, r *http.Request) {
 			offset = int32(parseOffset)
 		}
 	}
+	if languageString != "" {
+		language.Scan(languageString)
+	}
 
-	dbSnippets, _ := s.DbQueries.GetSnippetsByCreatedAt(r.Context(), database.GetSnippetsByCreatedAtParams{Limit: limit, Offset: offset})
+	dbSnippets, _ := s.DbQueries.GetSnippetsByCreatedAt(r.Context(), database.GetSnippetsByCreatedAtParams{Limit: limit, Offset: offset, Language: language})
 	snippetsCount, _ := s.DbQueries.GetSnippetCount(r.Context())
 	count := int32(snippetsCount)
 
@@ -94,6 +100,7 @@ func (s *SnippetsHandler) GetSnippets(w http.ResponseWriter, r *http.Request) {
 	baseURL := fmt.Sprintf("%s://%s", r.URL.Scheme, r.Host)
 	var next *string
 	var previous *string
+
 	if !(offset+limit >= count) {
 		nextURL := fmt.Sprintf("%s/api/snippets?limit=%v&offset=%v", baseURL, limit, offset+limit)
 		next = &nextURL

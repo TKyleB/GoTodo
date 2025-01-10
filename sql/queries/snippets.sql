@@ -4,9 +4,10 @@ VALUES(gen_random_uuid(), NOW(), NOW(), $1, $2, $3)
 RETURNING *;
 
 -- name: GetSnippetsByCreatedAt :many
-SELECT snippets.id, snippets.created_at, snippets.updated_at, snippets.user_id, snippet_text, languages.name as language
+SELECT snippets.id, snippets.created_at, snippets.updated_at, snippets.user_id, snippet_text, languages.name AS language
 FROM snippets
 INNER JOIN languages ON snippets.language_id = languages.id
+WHERE (languages.name = sqlc.narg('language') OR sqlc.narg('language') IS NULL)
 ORDER BY created_at
 LIMIT $1 OFFSET $2;
 

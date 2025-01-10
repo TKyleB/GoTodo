@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,16 +51,18 @@ func (q *Queries) GetSnippetCount(ctx context.Context) (int64, error) {
 }
 
 const getSnippetsByCreatedAt = `-- name: GetSnippetsByCreatedAt :many
-SELECT snippets.id, snippets.created_at, snippets.updated_at, snippets.user_id, snippet_text, languages.name as language
+SELECT snippets.id, snippets.created_at, snippets.updated_at, snippets.user_id, snippet_text, languages.name AS language
 FROM snippets
 INNER JOIN languages ON snippets.language_id = languages.id
+WHERE (languages.name = $3 OR $3 IS NULL)
 ORDER BY created_at
 LIMIT $1 OFFSET $2
 `
 
 type GetSnippetsByCreatedAtParams struct {
-	Limit  int32
-	Offset int32
+	Limit    int32
+	Offset   int32
+	Language sql.NullString
 }
 
 type GetSnippetsByCreatedAtRow struct {
@@ -72,7 +75,7 @@ type GetSnippetsByCreatedAtRow struct {
 }
 
 func (q *Queries) GetSnippetsByCreatedAt(ctx context.Context, arg GetSnippetsByCreatedAtParams) ([]GetSnippetsByCreatedAtRow, error) {
-	rows, err := q.db.QueryContext(ctx, getSnippetsByCreatedAt, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, getSnippetsByCreatedAt, arg.Limit, arg.Offset, arg.Language)
 	if err != nil {
 		return nil, err
 	}
