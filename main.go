@@ -59,6 +59,7 @@ func main() {
 	mux.HandleFunc("GET /api/users/", appConfig.usersHandler.GetUser)
 
 	mux.HandleFunc("POST /api/snippets", appConfig.snippetsHandler.CreateSnippet)
+	mux.HandleFunc("GET /api/snippets", appConfig.snippetsHandler.GetSnippets)
 
 	fmt.Printf("Starting server on %s\n", server.Addr)
 	server.ListenAndServe()

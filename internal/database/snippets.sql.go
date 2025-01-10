@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -35,4 +36,67 @@ func (q *Queries) CreateSnippet(ctx context.Context, arg CreateSnippetParams) (S
 		&i.SnippetText,
 	)
 	return i, err
+}
+
+const getSnippetCount = `-- name: GetSnippetCount :one
+SELECT COUNT(*) FROM snippets
+`
+
+func (q *Queries) GetSnippetCount(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getSnippetCount)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const getSnippetsByCreatedAt = `-- name: GetSnippetsByCreatedAt :many
+SELECT snippets.id, snippets.created_at, snippets.updated_at, snippets.user_id, snippet_text, languages.name as language
+FROM snippets
+INNER JOIN languages ON snippets.language_id = languages.id
+ORDER BY created_at
+LIMIT $1 OFFSET $2
+`
+
+type GetSnippetsByCreatedAtParams struct {
+	Limit  int32
+	Offset int32
+}
+
+type GetSnippetsByCreatedAtRow struct {
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	UserID      uuid.UUID
+	SnippetText string
+	Language    string
+}
+
+func (q *Queries) GetSnippetsByCreatedAt(ctx context.Context, arg GetSnippetsByCreatedAtParams) ([]GetSnippetsByCreatedAtRow, error) {
+	rows, err := q.db.QueryContext(ctx, getSnippetsByCreatedAt, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSnippetsByCreatedAtRow
+	for rows.Next() {
+		var i GetSnippetsByCreatedAtRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+			&i.SnippetText,
+			&i.Language,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
