@@ -3,6 +3,7 @@ package utilites
 import (
 	"encoding/json"
 	"net/http"
+	"unicode"
 )
 
 func DecodeJsonBody(w http.ResponseWriter, r *http.Request, dst interface{}) error {
@@ -35,5 +36,19 @@ func ResponseWithError(w http.ResponseWriter, r *http.Request, code int, message
 	}
 	errResponse := Error{Error: message}
 	ResponseWithJson(w, r, code, errResponse)
+
+}
+
+func IsValidUsername(text string) bool {
+	if len(text) < 3 {
+		return false
+	}
+
+	for _, char := range text {
+		if !unicode.IsLetter(char) && !unicode.IsDigit(char) {
+			return false
+		}
+	}
+	return true
 
 }

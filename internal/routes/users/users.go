@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
-	"net/mail"
 	"time"
 
 	"github.com/TKyleB/GoTodo/internal/auth"
@@ -21,7 +20,7 @@ type UsersHandler struct {
 
 func (u *UsersHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	type CreateUserRequest struct {
-		Email    string `json:"email"`
+		Username string `json:"username"`
 		Password string `json:"password"`
 	}
 	var req CreateUserRequest
@@ -29,11 +28,12 @@ func (u *UsersHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	_, err = mail.ParseAddress(req.Email)
-	if err != nil {
-		utilites.ResponseWithError(w, r, http.StatusBadRequest, "invalid email format")
+
+	if !utilites.IsValidUsername(req.Username) {
+		utilites.ResponseWithError(w, r, http.StatusBadRequest, "username must be >3 characters and not contain spaces or special characters")
 		return
 	}
+
 	if len(req.Password) < 6 {
 		utilites.ResponseWithError(w, r, http.StatusBadRequest, "password must be 6 or greater characters")
 		return
@@ -43,13 +43,13 @@ func (u *UsersHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		utilites.ResponseWithError(w, r, http.StatusBadRequest, "invalid characters in password")
 		return
 	}
-	user, err := u.DbQueries.CreateUser(r.Context(), database.CreateUserParams{Email: req.Email, HashedPassword: hashedPassword})
-	userResponse := auth.User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email}
+	user, err := u.DbQueries.CreateUser(r.Context(), database.CreateUserParams{Username: req.Username, HashedPassword: hashedPassword})
+	userResponse := auth.User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Username: user.Username}
 	if err != nil {
-		// If error is non-unique email
+		// If error is non-unique username
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
-			utilites.ResponseWithError(w, r, http.StatusConflict, "email is already registered")
+			utilites.ResponseWithError(w, r, http.StatusConflict, "username is already registered")
 			return
 		}
 		utilites.ResponseWithError(w, r, http.StatusInternalServerError, "server error")
@@ -59,14 +59,14 @@ func (u *UsersHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 }
 func (u *UsersHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	type LoginUserRequest struct {
-		Email    string `json:"email"`
+		Username string `json:"username"`
 		Password string `json:"password"`
 	}
 	type LoginUserResponse struct {
 		ID        uuid.UUID `json:"user_id"`
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
+		Username  string    `json:"username"`
 		Token     string    `json:"token"`
 		Refresh   string    `json:"refresh_token"`
 	}
@@ -76,16 +76,16 @@ func (u *UsersHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user if email exists
-	user, err := u.DbQueries.GetUserByEmail(r.Context(), params.Email)
+	// Get user if username exists
+	user, err := u.DbQueries.GetUserByUsername(r.Context(), params.Username)
 	if err != nil {
-		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "invalid email/password combination")
+		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "invalid username/password combination")
 		return
 	}
 	// Check if password matches stored
 	err = u.AuthService.CheckPasswordHash(params.Password, user.HashedPassword)
 	if err != nil {
-		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "invalid email/password combination")
+		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "invalid username/password combination")
 		return
 	}
 	// Create JWT token
@@ -113,24 +113,27 @@ func (u *UsersHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+		Username:  user.Username,
 		Token:     token,
 		Refresh:   refreshToken.Token})
 
 }
 func (u *UsersHandler) RefreshUserToken(w http.ResponseWriter, r *http.Request) {
+	type RefreshTokenRequest struct {
+		RefreshToken string `json:"refreshToken"`
+	}
 	type RefreshTokenResponse struct {
 		Token string `json:"token"`
 	}
-
-	// Get refresh token from auth headers
-	refreshTokenString, err := u.AuthService.GetBearerToken(r.Header)
+	// Get refresh token from JSON request
+	params := RefreshTokenRequest{}
+	err := utilites.DecodeJsonBody(w, r, &params)
 	if err != nil {
-		utilites.ResponseWithError(w, r, http.StatusBadRequest, "invalid auth headers")
 		return
 	}
+
 	// Check database against unexpired and revoked tokens
-	refreshToken, err := u.DbQueries.GetRefreshToken(r.Context(), refreshTokenString)
+	refreshToken, err := u.DbQueries.GetRefreshToken(r.Context(), params.RefreshToken)
 	if err != nil {
 		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "expired or invalid token")
 		return
@@ -151,5 +154,5 @@ func (u *UsersHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		utilites.ResponseWithError(w, r, http.StatusUnauthorized, err.Error())
 		return
 	}
-	utilites.ResponseWithJson(w, r, http.StatusOK, auth.User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Email: user.Email})
+	utilites.ResponseWithJson(w, r, http.StatusOK, auth.User{ID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, Username: user.Username})
 }

@@ -27,7 +27,7 @@ type User struct {
 	ID        uuid.UUID `json:"user_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
+	Username  string    `json:"username"`
 }
 
 func (a *AuthService) GetAuthenticatedUser(r *http.Request) (*User, error) {
@@ -44,7 +44,7 @@ func (a *AuthService) GetAuthenticatedUser(r *http.Request) (*User, error) {
 		return nil, errors.New("user not in database")
 	}
 
-	user := User{ID: dbUser.ID, CreatedAt: dbUser.CreatedAt, UpdatedAt: dbUser.UpdatedAt, Email: dbUser.Email}
+	user := User{ID: dbUser.ID, CreatedAt: dbUser.CreatedAt, UpdatedAt: dbUser.UpdatedAt, Username: dbUser.Username}
 	return &user, nil
 
 }
