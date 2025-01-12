@@ -47,6 +47,7 @@ func main() {
 		usersHandler:    users.UsersHandler{DbQueries: dbQueries, AuthService: &authService},
 		snippetsHandler: snippets.SnippetsHandler{DbQueries: dbQueries, AuthService: &authService},
 	}
+
 	server := http.Server{
 		Handler: mux,
 		Addr:    ":" + PORT,
@@ -56,12 +57,27 @@ func main() {
 	mux.HandleFunc("POST /api/users/register", appConfig.usersHandler.RegisterUser)
 	mux.HandleFunc("POST /api/users/login", appConfig.usersHandler.LoginUser)
 	mux.HandleFunc("POST /api/users/refresh", appConfig.usersHandler.RefreshUserToken)
-	mux.HandleFunc("GET /api/users/", appConfig.usersHandler.GetUser)
+	mux.HandleFunc("GET /api/users", appConfig.usersHandler.GetUser)
 
 	mux.HandleFunc("POST /api/snippets", appConfig.snippetsHandler.CreateSnippet)
 	mux.HandleFunc("GET /api/snippets", appConfig.snippetsHandler.GetSnippets)
 
 	fmt.Printf("Starting server on %s\n", server.Addr)
-	server.ListenAndServe()
+	http.ListenAndServe(server.Addr, corsMiddleware(mux))
 
+}
+
+func corsMiddleware(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Access-Control-Allow-Origin", "http://localhost:3000")
+		w.Header().Add("Access-Control-Allow-Credentials", "true")
+		w.Header().Add("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
 }
