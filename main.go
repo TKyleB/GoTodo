@@ -17,8 +17,6 @@ import (
 	_ "github.com/lib/pq" // Used to connect to DB
 )
 
-const PORT = "8080"
-
 type AppConfig struct {
 	usersHandler    users.UsersHandler
 	snippetsHandler snippets.SnippetsHandler
@@ -28,6 +26,10 @@ func main() {
 	mux := http.NewServeMux()
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
+	port := os.Getenv("PORT")
+	if port == "" {
+		log.Fatal("Error. Port is not set.")
+	}
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -49,28 +51,30 @@ func main() {
 	}
 
 	server := http.Server{
-		Handler: mux,
-		Addr:    ":" + PORT,
+		Handler: corsMiddleware(mux),
+		Addr:    ":" + port,
 	}
 
 	// Routes
 	mux.HandleFunc("POST /api/users/register", appConfig.usersHandler.RegisterUser)
 	mux.HandleFunc("POST /api/users/login", appConfig.usersHandler.LoginUser)
 	mux.HandleFunc("POST /api/users/refresh", appConfig.usersHandler.RefreshUserToken)
+	mux.HandleFunc("POST /api/users/logout", appConfig.usersHandler.LogoutUser)
 	mux.HandleFunc("GET /api/users", appConfig.usersHandler.GetUser)
 
 	mux.HandleFunc("POST /api/snippets", appConfig.snippetsHandler.CreateSnippet)
 	mux.HandleFunc("GET /api/snippets", appConfig.snippetsHandler.GetSnippets)
+	mux.HandleFunc("GET /api/snippets/{id}", appConfig.snippetsHandler.GetSnippetById)
 
 	fmt.Printf("Starting server on %s\n", server.Addr)
-	http.ListenAndServe(server.Addr, corsMiddleware(mux))
+	http.ListenAndServe(server.Addr, server.Handler)
 
 }
 
 func corsMiddleware(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Access-Control-Allow-Origin", "http://localhost:3000")
-		w.Header().Add("Access-Control-Allow-Credentials", "true")
+		w.Header().Add("Access-Control-Allow-Origin", "*")
+		w.Header().Add("Access-Control-Allow-Credentials", "false")
 		w.Header().Add("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 		if r.Method == http.MethodOptions {
