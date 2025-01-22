@@ -26,12 +26,15 @@ type RefreshToken struct {
 }
 
 type Snippet struct {
-	ID          uuid.UUID
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	LanguageID  uuid.UUID
-	UserID      uuid.UUID
-	SnippetText string
+	ID                 uuid.UUID
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	LanguageID         uuid.UUID
+	UserID             uuid.UUID
+	SnippetTitle       string
+	SnippetDescription string
+	SnippetText        string
+	SearchVector       interface{}
 }
 
 type User struct {

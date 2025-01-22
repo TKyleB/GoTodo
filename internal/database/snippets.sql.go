@@ -14,38 +14,162 @@ import (
 )
 
 const createSnippet = `-- name: CreateSnippet :one
-INSERT INTO snippets(id, created_at, updated_at, language_id, user_id, snippet_text)
-VALUES(gen_random_uuid(), NOW(), NOW(), $1, $2, $3)
-RETURNING id, created_at, updated_at, language_id, user_id, snippet_text
+WITH inserted_snippet AS (
+INSERT INTO snippets(id, created_at, updated_at, language_id, user_id, snippet_text, snippet_description, snippet_title)
+VALUES(gen_random_uuid(), NOW(), NOW(), $1, $2, $3, $4, $5)
+RETURNING id, created_at, updated_at, language_id, user_id, snippet_title, snippet_description, snippet_text, search_vector
+)
+SELECT inserted_snippet.id, inserted_snippet.created_at, inserted_snippet.updated_at, inserted_snippet.language_id, inserted_snippet.user_id, inserted_snippet.snippet_title, inserted_snippet.snippet_description, inserted_snippet.snippet_text, inserted_snippet.search_vector, users.username
+FROM inserted_snippet
+INNER JOIN users ON users.id = inserted_snippet.user_id
 `
 
 type CreateSnippetParams struct {
-	LanguageID  uuid.UUID
-	UserID      uuid.UUID
-	SnippetText string
+	LanguageID         uuid.UUID
+	UserID             uuid.UUID
+	SnippetText        string
+	SnippetDescription string
+	SnippetTitle       string
 }
 
-func (q *Queries) CreateSnippet(ctx context.Context, arg CreateSnippetParams) (Snippet, error) {
-	row := q.db.QueryRowContext(ctx, createSnippet, arg.LanguageID, arg.UserID, arg.SnippetText)
-	var i Snippet
+type CreateSnippetRow struct {
+	ID                 uuid.UUID
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	LanguageID         uuid.UUID
+	UserID             uuid.UUID
+	SnippetTitle       string
+	SnippetDescription string
+	SnippetText        string
+	SearchVector       interface{}
+	Username           string
+}
+
+func (q *Queries) CreateSnippet(ctx context.Context, arg CreateSnippetParams) (CreateSnippetRow, error) {
+	row := q.db.QueryRowContext(ctx, createSnippet,
+		arg.LanguageID,
+		arg.UserID,
+		arg.SnippetText,
+		arg.SnippetDescription,
+		arg.SnippetTitle,
+	)
+	var i CreateSnippetRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LanguageID,
 		&i.UserID,
+		&i.SnippetTitle,
+		&i.SnippetDescription,
 		&i.SnippetText,
+		&i.SearchVector,
+		&i.Username,
 	)
 	return i, err
 }
 
-const getSnippetsByCreatedAt = `-- name: GetSnippetsByCreatedAt :many
-SELECT COUNT(*) OVER () AS total_count,
- snippets.id, snippets.created_at, snippets.updated_at, snippets.user_id, snippet_text, languages.name AS language
+const getSnippetById = `-- name: GetSnippetById :one
+SELECT snippets.id, snippets.created_at, snippets.updated_at, snippets.user_id, snippet_text, users.username, snippet_description, snippet_title, languages.name AS language
 FROM snippets
 INNER JOIN languages ON snippets.language_id = languages.id
-WHERE (languages.name = $3 OR $3 IS NULL)
-ORDER BY created_at
+INNER JOIN users ON snippets.user_id = users.id
+WHERE snippets.id = $1
+`
+
+type GetSnippetByIdRow struct {
+	ID                 uuid.UUID
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	UserID             uuid.UUID
+	SnippetText        string
+	Username           string
+	SnippetDescription string
+	SnippetTitle       string
+	Language           string
+}
+
+func (q *Queries) GetSnippetById(ctx context.Context, id uuid.UUID) (GetSnippetByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, getSnippetById, id)
+	var i GetSnippetByIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+		&i.SnippetText,
+		&i.Username,
+		&i.SnippetDescription,
+		&i.SnippetTitle,
+		&i.Language,
+	)
+	return i, err
+}
+
+const getSnippetBySearch = `-- name: GetSnippetBySearch :many
+SELECT snippets.id, snippets.created_at, snippets.updated_at, snippets.user_id, snippet_text, users.username, snippet_description, snippet_title, languages.name AS language
+FROM snippets
+INNER JOIN languages ON snippets.language_id = languages.id
+INNER JOIN users ON snippets.user_id = users.id
+WHERE search_vector @@ to_tsquery('simple', $1)
+`
+
+type GetSnippetBySearchRow struct {
+	ID                 uuid.UUID
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	UserID             uuid.UUID
+	SnippetText        string
+	Username           string
+	SnippetDescription string
+	SnippetTitle       string
+	Language           string
+}
+
+func (q *Queries) GetSnippetBySearch(ctx context.Context, toTsquery string) ([]GetSnippetBySearchRow, error) {
+	rows, err := q.db.QueryContext(ctx, getSnippetBySearch, toTsquery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSnippetBySearchRow
+	for rows.Next() {
+		var i GetSnippetBySearchRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+			&i.SnippetText,
+			&i.Username,
+			&i.SnippetDescription,
+			&i.SnippetTitle,
+			&i.Language,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSnippetsByCreatedAt = `-- name: GetSnippetsByCreatedAt :many
+SELECT COUNT(*) OVER () AS total_count,
+ snippets.id, snippets.created_at, snippets.updated_at, snippets.user_id, snippet_text, users.username, snippet_description, snippet_title, languages.name AS language
+FROM snippets
+INNER JOIN languages ON snippets.language_id = languages.id
+INNER JOIN users ON snippets.user_id = users.id
+WHERE
+(languages.name = $3 OR $3 IS NULL)
+AND (users.username = $4 OR $4 IS NULL)
+AND (search_vector @@ to_tsquery('simple', $5) OR $5 IS NULL)
+ORDER BY snippets.created_at DESC
 LIMIT $1 OFFSET $2
 `
 
@@ -53,20 +177,31 @@ type GetSnippetsByCreatedAtParams struct {
 	Limit    int32
 	Offset   int32
 	Language sql.NullString
+	Username sql.NullString
+	Search   sql.NullString
 }
 
 type GetSnippetsByCreatedAtRow struct {
-	TotalCount  int64
-	ID          uuid.UUID
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	UserID      uuid.UUID
-	SnippetText string
-	Language    string
+	TotalCount         int64
+	ID                 uuid.UUID
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	UserID             uuid.UUID
+	SnippetText        string
+	Username           string
+	SnippetDescription string
+	SnippetTitle       string
+	Language           string
 }
 
 func (q *Queries) GetSnippetsByCreatedAt(ctx context.Context, arg GetSnippetsByCreatedAtParams) ([]GetSnippetsByCreatedAtRow, error) {
-	rows, err := q.db.QueryContext(ctx, getSnippetsByCreatedAt, arg.Limit, arg.Offset, arg.Language)
+	rows, err := q.db.QueryContext(ctx, getSnippetsByCreatedAt,
+		arg.Limit,
+		arg.Offset,
+		arg.Language,
+		arg.Username,
+		arg.Search,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -81,6 +216,9 @@ func (q *Queries) GetSnippetsByCreatedAt(ctx context.Context, arg GetSnippetsByC
 			&i.UpdatedAt,
 			&i.UserID,
 			&i.SnippetText,
+			&i.Username,
+			&i.SnippetDescription,
+			&i.SnippetTitle,
 			&i.Language,
 		); err != nil {
 			return nil, err

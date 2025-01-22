@@ -6,6 +6,8 @@ CREATE TABLE snippets(
     updated_at TIMESTAMP NOT NULL,
     language_id uuid NOT NULL,
     user_id uuid NOT NULL,
+    snippet_title TEXT NOT NULL,
+    snippet_description TEXT NOT NULL, 
     snippet_text TEXT NOT NULL,
     FOREIGN KEY (language_id) REFERENCES languages(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE   
