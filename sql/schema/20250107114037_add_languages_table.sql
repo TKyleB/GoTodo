@@ -13,6 +13,9 @@ VALUES(gen_random_uuid(), 'javascript');
 
 INSERT INTO languages(id, name)
 VALUES(gen_random_uuid(), 'go');
+
+INSERT INTO languages(id, name)
+VALUES(gen_random_uuid(), 'sql');
 -- +goose StatementEnd
 
 -- +goose Down
