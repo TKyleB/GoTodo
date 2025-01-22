@@ -148,6 +148,21 @@ func (u *UsersHandler) RefreshUserToken(w http.ResponseWriter, r *http.Request) 
 	refreshTokenResponse := RefreshTokenResponse{Token: newToken}
 	utilites.ResponseWithJson(w, r, http.StatusOK, &refreshTokenResponse)
 }
+func (u *UsersHandler) LogoutUser(w http.ResponseWriter, r *http.Request) {
+	type LogoutUserRequest struct {
+		RefreshToken string `json:"refreshToken"`
+	}
+	params := LogoutUserRequest{}
+	err := utilites.DecodeJsonBody(w, r, &params)
+	if err != nil {
+		return
+	}
+
+	u.DbQueries.RevokeRefreshToken(r.Context(), params.RefreshToken)
+	w.WriteHeader(http.StatusNoContent)
+
+}
+
 func (u *UsersHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	user, err := u.AuthService.GetAuthenticatedUser(r)
 	if err != nil {
