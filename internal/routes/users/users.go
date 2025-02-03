@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/TKyleB/Snippetz/internal/auth"
-	"github.com/TKyleB/Snippetz/internal/database"
-	"github.com/TKyleB/Snippetz/internal/utilites"
+	"github.com/TKyleB/snippetz/internal/auth"
+	"github.com/TKyleB/snippetz/internal/database"
+	"github.com/TKyleB/snippetz/internal/utilites"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 )

@@ -1,4 +1,4 @@
-module github.com/TKyleB/Snippetz
+module github.com/TKyleB/snippetz
 
 go 1.23.4
 

@@ -8,10 +8,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/TKyleB/Snippetz/internal/auth"
-	"github.com/TKyleB/Snippetz/internal/database"
-	"github.com/TKyleB/Snippetz/internal/routes/snippets"
-	"github.com/TKyleB/Snippetz/internal/routes/users"
+	"github.com/TKyleB/snippetz/internal/auth"
+	"github.com/TKyleB/snippetz/internal/database"
+	"github.com/TKyleB/snippetz/internal/routes/snippets"
+	"github.com/TKyleB/snippetz/internal/routes/users"
 	"github.com/joho/godotenv"
 
 	_ "github.com/lib/pq" // Used to connect to DB

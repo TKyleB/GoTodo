@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TKyleB/Snippetz/internal/database"
+	"github.com/TKyleB/snippetz/internal/database"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
