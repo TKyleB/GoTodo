@@ -109,7 +109,7 @@ func (s *SnippetsHandler) GetSnippets(w http.ResponseWriter, r *http.Request) {
 	var search sql.NullString
 	languageString := r.URL.Query().Get("language")
 	usernameString := r.URL.Query().Get("username")
-	searchString := r.URL.Query().Get("search")
+	searchString := r.URL.Query().Get("q")
 	limitString := r.URL.Query().Get("limit")
 	offsetString := r.URL.Query().Get("offset")
 
