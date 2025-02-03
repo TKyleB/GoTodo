@@ -36,4 +36,8 @@ INNER JOIN languages ON snippets.language_id = languages.id
 INNER JOIN users ON snippets.user_id = users.id
 WHERE search_vector @@ to_tsquery('simple', $1);
 
+-- name: DeleteSnippetById :exec
+DELETE FROM snippets WHERE snippets.id = $1;
+
+
 
