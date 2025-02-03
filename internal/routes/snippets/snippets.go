@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TKyleB/GoTodo/internal/auth"
-	"github.com/TKyleB/GoTodo/internal/database"
-	"github.com/TKyleB/GoTodo/internal/utilites"
+	"github.com/TKyleB/Snippetz/internal/auth"
+	"github.com/TKyleB/Snippetz/internal/database"
+	"github.com/TKyleB/Snippetz/internal/utilites"
 	"github.com/google/uuid"
 )
 

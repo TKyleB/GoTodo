@@ -1,4 +1,4 @@
-module github.com/TKyleB/GoTodo
+module github.com/TKyleB/Snippetz
 
 go 1.23.4
 
