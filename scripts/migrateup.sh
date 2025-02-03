@@ -5,4 +5,4 @@ if [ -f .env ]; then
 fi
 
 cd sql/schema
-goose $DATABASE_URL up
+goose postgres $DATABASE_URL up
