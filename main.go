@@ -26,15 +26,23 @@ func main() {
 	mux := http.NewServeMux()
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		log.Fatal("Error. DB_URL ENV is not set.")
+	}
 	port := os.Getenv("PORT")
 	if port == "" {
-		log.Fatal("Error. Port is not set.")
+		log.Fatal("Error. PORT ENV is not set.")
 	}
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Error connecting to database. %v", err)
 	}
+	err = db.Ping()
+	if err != nil {
+		log.Fatalf("Error connecting to database. %v", err)
+	}
+
 	// Services
 	dbQueries := database.New(db)
 	authService := auth.AuthService{
