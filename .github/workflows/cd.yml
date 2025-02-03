@@ -37,4 +37,7 @@ jobs:
 
             - name: 'Submit build'
               run: 'gcloud builds submit --tag us-central1-docker.pkg.dev/snippetz/snippetz-ar-repo/snippetz:latest .'
+              
+            - name: Migrate DB
+              run: 'scripts/migrateup.sh'
         
