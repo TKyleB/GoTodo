@@ -73,6 +73,7 @@ func main() {
 	mux.HandleFunc("POST /api/snippets", appConfig.snippetsHandler.CreateSnippet)
 	mux.HandleFunc("GET /api/snippets", appConfig.snippetsHandler.GetSnippets)
 	mux.HandleFunc("GET /api/snippets/{id}", appConfig.snippetsHandler.GetSnippetById)
+	mux.HandleFunc("DELETE /api/snippets/{id}", appConfig.snippetsHandler.DeleteSnippetById)
 
 	fmt.Printf("Starting server on %s\n", server.Addr)
 	http.ListenAndServe(server.Addr, server.Handler)

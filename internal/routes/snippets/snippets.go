@@ -192,3 +192,29 @@ func (s *SnippetsHandler) GetSnippetById(w http.ResponseWriter, r *http.Request)
 	}
 	utilites.ResponseWithJson(w, r, http.StatusOK, &snippet)
 }
+
+func (s *SnippetsHandler) DeleteSnippetById(w http.ResponseWriter, r *http.Request) {
+	idString := r.PathValue("id")
+	id, err := uuid.Parse(idString)
+	if err != nil {
+		utilites.ResponseWithError(w, r, http.StatusBadRequest, "invalid id")
+	}
+	user, err := s.AuthService.GetAuthenticatedUser(r)
+	if err != nil {
+		utilites.ResponseWithError(w, r, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	snippet, err := s.DbQueries.GetSnippetById(r.Context(), id)
+	if err != nil {
+		utilites.ResponseWithError(w, r, http.StatusNotFound, "")
+		return
+	}
+	if snippet.UserID != user.ID {
+		utilites.ResponseWithError(w, r, http.StatusUnauthorized, "")
+		return
+	}
+	s.DbQueries.DeleteSnippetById(r.Context(), snippet.ID)
+	utilites.ResponseWithJson(w, r, http.StatusNoContent, "")
+
+}
