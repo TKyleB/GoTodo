@@ -30,11 +30,16 @@ type Snippet struct {
 	SnippetTitle string    `json:"snippet_title"`
 }
 
+type Results struct {
+	Snippets  []Snippet      `json:"snippets"`
+	Languages map[string]int `json:"languages"`
+}
+
 type SnippetsResponse struct {
-	Count    int32     `json:"count"`
-	Next     *string   `json:"next"`
-	Previous *string   `json:"previous"`
-	Results  []Snippet `json:"results"`
+	Count    int32   `json:"count"`
+	Next     *string `json:"next"`
+	Previous *string `json:"previous"`
+	Results  Results `json:"results"`
 }
 
 func (s *SnippetsHandler) CreateSnippet(w http.ResponseWriter, r *http.Request) {
@@ -136,12 +141,16 @@ func (s *SnippetsHandler) GetSnippets(w http.ResponseWriter, r *http.Request) {
 
 	dbSnippets, _ := s.DbQueries.GetSnippetsByCreatedAt(r.Context(), database.GetSnippetsByCreatedAtParams{Limit: limit, Offset: offset, Language: language, Username: username, Search: search})
 
+	languageCounts := make(map[string]int)
 	var snippets []Snippet
 	for i, snippet := range dbSnippets {
 		// If snippets. Update total count
 		if i == 0 {
 			count = int32(snippet.TotalCount)
 		}
+
+		languageCounts[snippet.Language] += 1
+
 		snippets = append(snippets, Snippet{
 			ID:           snippet.ID,
 			CreatedAt:    snippet.CreatedAt,
@@ -167,7 +176,10 @@ func (s *SnippetsHandler) GetSnippets(w http.ResponseWriter, r *http.Request) {
 		prevURL := fmt.Sprintf("%s/api/snippets?limit=%v&offset=%v", baseURL, limit, max(offset-limit, 0))
 		previous = &prevURL
 	}
-	response := SnippetsResponse{Count: count, Next: next, Previous: previous, Results: snippets}
+	var results = Results{}
+	results.Snippets = snippets
+	results.Languages = languageCounts
+	response := SnippetsResponse{Count: count, Next: next, Previous: previous, Results: results}
 
 	utilites.ResponseWithJson(w, r, http.StatusOK, &response)
 }
